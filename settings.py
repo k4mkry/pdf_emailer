@@ -1,3 +1,4 @@
+import os
 import tkinter as tk
 from tkinter import ttk
 from datetime import datetime
@@ -22,8 +23,7 @@ class Style(ttk.Style):
 
 class Settings:
 
-    DIRECTORY = r'C:\Users\kkrysa.HMT\Documents\Dev\python\tkinter\AKS_invoice_emailer\WDT_path'
-    # DIRECTORY = r'C:\Users\kkrysa.HMT\Desktop\Dev\Python\AKS_invoice_emailer\WDT_path'
+    DIRECTORY = os.path.join(os.getcwd(), 'WDT_path')
     date_now = datetime.now().strftime('%Y_%m_%d') + '-'
     body = '''
     <p>

@@ -218,25 +218,21 @@ class App(tk.Tk):
     def update(self, name, email, pk):
         if len(name) != 0 and len(email) != 0:
             rows = db.select_client_by_id(pk)
-            if rows:
-                for row in rows:
-                    if row[1] == name:
-                        print(row[1])
-                        print(name)
-                        self.show_warning(
-                            'Kontrahent ' + name + ' już istnieje!')
-                    elif db.email_validation(email):
-                        if not os.path.exists(Settings.DIRECTORY + '\\' + name):
-                            os.rename(Settings.DIRECTORY + '\\' + row[1],
-                                      Settings.DIRECTORY + '\\' + name)
-                        db.update_client(name, email, pk)
-                        self.show_info('Zmieniono dane.')
-                    else:
-                        self.show_warning('Podano nieprawidłowy adres email!')
-
-                    self.view()
+            old_name = list(rows)[0][1]
+            if db.email_validation(email):
+                self.rename_folder(old_name, name)
+                db.update_client(name, email, pk)
+                self.show_info('Zmieniono dane.')
+            else:
+                self.show_warning('Podano nieprawidłowy adres email!')
         else:
             self.show_warning('Wszystkie pola muszą być wypełnione!')
+        self.view()
+
+    def rename_folder(self, old_name, new_name):
+        if not os.path.exists(Settings.DIRECTORY + '\\' + new_name):
+            os.rename(Settings.DIRECTORY + '\\' + old_name,
+                      Settings.DIRECTORY + '\\' + new_name)
 
     def open_folder(self, name):
         if (len(self.e_name.get()) != 0):
