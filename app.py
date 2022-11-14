@@ -35,32 +35,6 @@ class InvoicesMailing():
                         move(file_path, path + '\\archiwum\\' +
                              Settings.date_now + file)
 
-                # if Settings.switch == 1:
-                #     for file in os.listdir(path):
-                #         if file.endswith(".pdf") and 'archiwum' not in file:
-                #             files = []
-                #             file_path = os.path.join(path, file)
-                #             files.append(file_path)
-                #             self.emailer(mail, files)
-                #             if not os.path.exists(path + '\\archiwum'):
-                #                 os.makedirs(path + '\\archiwum')
-                #             move(file_path, path + '\\archiwum\\' +
-                #                  self.date_now + file)
-                # elif Settings.switch == 2:
-                #     files = []
-                #     for file in os.listdir(path):
-                #         if 'archiwum' not in file:
-                #             file_path = os.path.join(path, file)
-                #             files.append(file_path)
-
-                #     if files:
-                #         self.emailer(mail, files)
-                #         for file_path in files:
-                #             if not os.path.exists(path + '\\archiwum'):
-                #                 os.makedirs(path + '\\archiwum')
-                #             move(file_path, path + '\\archiwum\\' +
-                #                  self.date_now + file_path.rsplit('\\', 1)[-1])
-
     def emailer(self, recipient, attachment=''):
         outlook = win32.Dispatch('outlook.application')
         mail = outlook.CreateItem(0)
