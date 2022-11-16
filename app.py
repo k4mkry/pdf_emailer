@@ -23,18 +23,28 @@ class InvoicesMailing():
             if name == 'poczta':
                 continue
             path = os.path.join(Settings.DIRECTORY, name)
-            if os.path.exists(path):
-                for file in os.listdir(path):
-                    if file.endswith(".pdf") and 'archiwum' not in file:
-                        files = []
-                        file_path = os.path.join(path, file)
-                        files.append(file_path)
-                        self.emailer(mail, files)
-                        if not os.path.exists(path + '\\archiwum'):
-                            os.makedirs(path + '\\archiwum')
-                        move(file_path, path + '\\archiwum\\' +
-                             Settings.date_now + file)
+            if not os.path.exists(path):
+                continue
+            for file in os.listdir(path):
+                if file.endswith(".pdf") and 'archiwum' not in file:
+                    files = []
+                    file_path = os.path.join(path, file)
+                    files.append(file_path)
+                    self.emailer(mail, files)
+                    if not os.path.exists(path + '\\archiwum'):
+                        os.makedirs(path + '\\archiwum')
+                    move(file_path, path + '\\archiwum\\' +
+                         Settings.date_now + file)
         myapp.count_items()
+
+        # my_report = {}
+        # for k, v in myapp.items.items():
+        #     my_report[k] = v
+        # print(my_report)
+        my_report = ''
+        for k, v in myapp.items.items():
+            my_report = my_report + '\n' + k + ' - ' + str(v)
+        print(my_report)
 
     def emailer(self, recipient, attachment=''):
         outlook = win32.Dispatch('outlook.application')
@@ -157,7 +167,6 @@ class App(tk.Tk):
                     if file.endswith(".pdf") and 'archiwum' not in file:
                         count += 1
                 self.items[name] = count
-
         for i in self.tree.get_children():
             self.tree.delete(i)
         self.view()
