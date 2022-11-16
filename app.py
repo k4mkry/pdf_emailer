@@ -34,6 +34,7 @@ class InvoicesMailing():
                             os.makedirs(path + '\\archiwum')
                         move(file_path, path + '\\archiwum\\' +
                              Settings.date_now + file)
+        myapp.count_items()
 
     def emailer(self, recipient, attachment=''):
         outlook = win32.Dispatch('outlook.application')
@@ -44,7 +45,7 @@ class InvoicesMailing():
         for i in range(len(attachment)):
             mail.Attachments.Add(attachment[i])
         # Display False if you want to send email without seeing outlook window
-        mail.Display(True)
+        mail.Display(False)
 
 
 class App(tk.Tk):
@@ -64,7 +65,6 @@ class App(tk.Tk):
         }
         self.items = {}
         self.create_dirs()
-        self.count_items()
 
         # frames
         f_tree = ttk.Frame(self)
@@ -115,7 +115,7 @@ class App(tk.Tk):
         b_send = ttk.Button(f_control, text="\nWyślij\n", width=13,
                             command=lambda: InvoicesMailing())
         b_send.grid(row=0, column=4, rowspan=2, padx=(10, 5))
-        b_test = ttk.Button(f_control, text="TEST", width=13,
+        b_test = ttk.Button(f_control, text="Odśwież", width=13,
                             command=self.count_items)
         b_test.grid(row=2, column=4, padx=(10, 5))
 
@@ -139,10 +139,12 @@ class App(tk.Tk):
         self.tree.bind("<ButtonRelease-1>", self.display)
 
         # functions
-        self.view()
+        self.count_items()
 
     def count_items(self):
         rows = db.select_clients()
+        if not rows:
+            return
         for row in rows:
             count = 0
             name = row[1].lower()
@@ -156,10 +158,15 @@ class App(tk.Tk):
                         count += 1
                 self.items[name] = count
 
+        for i in self.tree.get_children():
+            self.tree.delete(i)
+        self.view()
+
     def view(self):
         for i in self.tree.get_children():
             self.tree.delete(i)
 
+        self.tree.tag_configure('orange', background='orange')
         rows = db.select_clients()
         for row in rows:
             new_row = ''
@@ -168,7 +175,11 @@ class App(tk.Tk):
                 if k.lower() == row[1].lower():
                     value = v
                 new_row = (row[1], row[2], value)
-            self.tree.insert('', 'end', values=new_row)
+            if value != 0:
+                self.tree.insert('', 'end', values=new_row, tags=('orange',))
+            else:
+                self.tree.insert('', 'end', values=new_row)
+        self.after(600000, lambda: self.view())
 
     def add(self, name, email):
         if len(name) != 0 and len(email) != 0:
@@ -184,7 +195,6 @@ class App(tk.Tk):
                         os.makedirs(Settings.DIRECTORY + '\\' + name)
                 else:
                     self.show_warning('Podano nieprawidłowy adres email!')
-
             self.view()
         else:
             self.show_warning('Pola nie mogą być puste.')
