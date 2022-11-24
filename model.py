@@ -17,13 +17,6 @@ class Database():
             '''
         )
 
-        self.cur.execute(
-            '''
-            INSERT OR REPLACE INTO clients(id, name, mail)
-            VALUES(1, 'HMT', 'info@hmt-automotive.com');
-            '''
-        )
-
     def insert_clients(self, name, email):
         name = self.name_clear_chars(name)
         self.cur.execute(

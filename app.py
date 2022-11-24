@@ -1,4 +1,4 @@
-# Program to automate WDT mailing with outlook
+# Program to automate WDT mailing with outlook by K. Krysa
 
 import os
 import tkinter as tk
@@ -36,24 +36,24 @@ class InvoicesMailing():
                     move(file_path, path + '\\archiwum\\' +
                          Settings.date_now + file)
         myapp.count_items()
-
-        # my_report = {}
-        # for k, v in myapp.items.items():
-        #     my_report[k] = v
-        # print(my_report)
         my_report = ''
         for k, v in myapp.items.items():
-            my_report = my_report + '\n' + k + ' - ' + str(v)
-        print(my_report)
+            if v != 0:
+                my_report = f'{my_report} {k} - {str(v)} <br>'
+            else:
+                my_report = 'Raport z mailingu faktur - jeżeli jakieś pliki pozostaną niewysłane, zostaną wylistowane niżej.<br>Brak plików do wysłania.'
+        report_mail = db.select_client_by_id(1)
+        self.emailer(report_mail[0][2], '', my_report)
 
-    def emailer(self, recipient, attachment=''):
+    def emailer(self, recipient, attachment='', body=Settings.body):
         outlook = win32.Dispatch('outlook.application')
         mail = outlook.CreateItem(0)
         mail.To = recipient
         mail.Subject = 'HMT FAKTURA'
-        mail.HtmlBody = Settings.body
+        mail.HtmlBody = body
         for i in range(len(attachment)):
             mail.Attachments.Add(attachment[i])
+        # mail.send
         # Display False if you want to send email without seeing outlook window
         mail.Display(False)
 
