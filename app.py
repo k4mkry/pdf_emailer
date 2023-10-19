@@ -1,5 +1,4 @@
 # Program to automate WDT mailing with outlook by K. Krysa
-
 import os
 import tkinter as tk
 import tkinter.messagebox as messagebox
@@ -9,8 +8,9 @@ from webbrowser import open
 from shutil import move
 from model import Database
 from settings import *
+import csv
 
-db = Database('emailer.db')
+db = Database(Settings.DATABASE)
 
 
 class InvoicesMailing():
@@ -22,40 +22,73 @@ class InvoicesMailing():
             mail = (row[2].lower()).strip()
             if name == 'poczta':
                 continue
-            path = os.path.join(Settings.DIRECTORY, name)
-            if not os.path.exists(path):
+            dir_path = os.path.join(Settings.DIRECTORY, name)
+            if not os.path.exists(dir_path):
                 continue
-            for file in os.listdir(path):
-                if file.endswith(".pdf") and 'archiwum' not in file:
+            
+            files2 = []
+            for file in os.listdir(dir_path):
+                file_path = os.path.join(dir_path, file)
+                if os.path.isfile(file_path):
                     files = []
-                    file_path = os.path.join(path, file)
                     files.append(file_path)
                     self.emailer(mail, files)
-                    if not os.path.exists(path + '\\archiwum'):
-                        os.makedirs(path + '\\archiwum')
-                    move(file_path, path + '\\archiwum\\' +
+                    if not os.path.exists(dir_path + '\\archiwum'):
+                        os.makedirs(dir_path + '\\archiwum')
+                    move(file_path, dir_path + '\\archiwum\\' +
                          Settings.date_now + file)
+
+                if os.path.isdir(file_path): #search for files in subfolders except archiwum
+                    for file in os.listdir(file_path):
+                        file2_path = os.path.join(file_path, file)
+                        
+                        if not ('archiwum' or 'Archiwum') in file2_path:
+                            files2.append(file2_path)
+                    if files2:
+                        self.emailer(mail, files2)
+                        if not os.path.exists(dir_path + '\\archiwum'):
+                            os.makedirs(dir_path + '\\archiwum')
+                        for entry in files2:
+                            file_name = os.path.basename(entry)
+                            move(entry, dir_path + '\\archiwum\\' +
+                                Settings.date_now + file_name)
+            
+
+        self.report()
+
+
+    def report(self):
         myapp.count_items()
-        my_report = ''
+        my_report = 'Raport z mailingu faktur - jeżeli jakieś pliki pozostaną niewysłane, zostaną wylistowane niżej.<br>'
+        report = ''
         for k, v in myapp.items.items():
             if v != 0:
-                my_report = f'{my_report} {k} - {str(v)} <br>'
-            else:
-                my_report = 'Raport z mailingu faktur - jeżeli jakieś pliki pozostaną niewysłane, zostaną wylistowane niżej.<br>Brak plików do wysłania.'
+                report += f'{k} - {str(v)} <br>'
+        my_report += report
         report_mail = db.select_client_by_id(1)
         self.emailer(report_mail[0][2], '', my_report)
+
+    def file_list(self, name, dir_path):
+        dict = {}
+        files = []
+        for path in os.listdir(dir_path):
+            if ('archiwum' or 'Archiwum') not in path:
+                file_path = os.path.join(dir_path, path)
+                files.append(file_path)
+        dict[name] = files
+
+        return dict
 
     def emailer(self, recipient, attachment='', body=Settings.body):
         outlook = win32.Dispatch('outlook.application')
         mail = outlook.CreateItem(0)
-        mail.To = recipient
+        mail.BCC = recipient
         mail.Subject = 'HMT FAKTURA'
         mail.HtmlBody = body
         for i in range(len(attachment)):
             mail.Attachments.Add(attachment[i])
-        # mail.send
-        # Display False if you want to send email without seeing outlook window
-        mail.Display(False)
+        mail.send # Send mails
+        # mail.Display(True) # Display False if you want to send email without seeing outlook window
 
 
 class App(tk.Tk):
@@ -164,8 +197,13 @@ class App(tk.Tk):
             path = os.path.join(Settings.DIRECTORY, name)
             if os.path.exists(path):
                 for file in os.listdir(path):
-                    if file.endswith(".pdf") and 'archiwum' not in file:
+                    if not ('Thumbs.db') in file and os.path.isfile(os.path.join(path, file)):
+                        print(os.path.join(path, file))
                         count += 1
+                    if not ('archiwum' or 'Archiwum') in file and os.path.isdir(os.path.join(path, file)):
+                        for file2 in os.listdir(os.path.join(path, file)):
+                            if os.path.isfile(os.path.join(path, file, file2)):
+                                count += 1
                 self.items[name] = count
         for i in self.tree.get_children():
             self.tree.delete(i)
@@ -196,14 +234,11 @@ class App(tk.Tk):
             if rows:
                 self.show_warning('Kontrahent ' + name + ' już istnieje!')
             else:
-                if db.email_validation(email):
-                    db.insert_clients(name, email)
-                    self.show_info('Dodano nowy wpis do bazy danych.')
+                db.insert_clients(name, email)
+                self.show_info('Dodano nowy wpis do bazy danych.')
 
-                    if not os.path.exists(Settings.DIRECTORY + '\\' + name):
-                        os.makedirs(Settings.DIRECTORY + '\\' + name)
-                else:
-                    self.show_warning('Podano nieprawidłowy adres email!')
+                if not os.path.exists(Settings.DIRECTORY + '\\' + name):
+                    os.makedirs(Settings.DIRECTORY + '\\' + name)
             self.view()
         else:
             self.show_warning('Pola nie mogą być puste.')
@@ -212,12 +247,10 @@ class App(tk.Tk):
         if len(name) != 0 and len(email) != 0:
             rows = db.select_client_by_id(pk)
             old_name = list(rows)[0][1]
-            if db.email_validation(email):
-                self.rename_folder(old_name, name)
-                db.update_client(name, email, pk)
-                self.show_info('Zmieniono dane.')
-            else:
-                self.show_warning('Podano nieprawidłowy adres email!')
+
+            self.rename_folder(old_name, name)
+            db.update_client(name, email, pk)
+            self.show_info('Zmieniono dane.')
         else:
             self.show_warning('Wszystkie pola muszą być wypełnione!')
         self.view()

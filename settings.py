@@ -23,36 +23,36 @@ class Style(ttk.Style):
 
 class Settings:
 
-    DIRECTORY = os.path.join(os.getcwd(), 'WDT_path')
+    # Dev var
+    # DIRECTORY = os.path.join(os.getcwd(), 'WDT_path')
+    # DATABASE = os.path.join(os.getcwd(), 'emailer.db')
+    # Production var
+    DIRECTORY = '\\\\10.16.1.100\\Sroda\\Ksiegowosc\\Faktury do wysylki'
+    DATABASE = '\\\\10.16.1.103\\wysylka_faktur\\emailer.db'
     date_now = datetime.now().strftime('%Y_%m_%d') + '-'
     body = '''
     <p>
     <span style="font-size:8px">[de] </span>
     Sehr geehrte Damen und Herren,
-    </p>
-    <p>
+    <br>
     Im Anhang finden Sie unsere elektronische Rechnung. Nachricht wurde automatisch generiert - bitte antworten Sie nicht darauf.
     </p>
-    <br>
 
     <p>
     <span style="font-size:8px">[en] </span>
     Dear Sirs,
-    </p>
-    <p>
+    <br>
     Please find attached our invoice. Message is generated automatically  - please do not reply to it.
     </p>
-    <br>
 
     <p>
     <span style="font-size:8px">[pl] </span>
     Dzień Dobry,
-    </p>
-    <p>
+    <br>
     W załączeniu przesyłamy naszą fakturę w wersji elektronicznej. Wiadomość została wygenerowana automatycznie – proszę na nią nie odpowiadać.
     </p>
-    <br>
 
+    <br>
     <p><small><i>
     HMT Heldener Metalltechnik Polska Sp. z o.o. & Co. Sp. K.<br>
     ul. Polna 17A  , Komorniki<br>
