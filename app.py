@@ -14,60 +14,46 @@ db = Database(Settings.DATABASE)
 
 class InvoicesMailing:
     def __init__(self):
-        self.process_clients()
-
-    def process_clients(self):
         rows = db.select_clients()
         for row in rows:
-            self.process_client(row)
+            name = (row[1].lower()).strip()
+            mail = (row[2].lower()).strip()
+            if name == "poczta":
+                continue
+            client_dir = os.path.join(Settings.DIRECTORY, name)
+            if not os.path.exists(client_dir):
+                continue
 
-    def process_client(self, row):
-        name = (row[1].lower()).strip()
-        mail = (row[2].lower()).strip()
-        if name == "poczta":
-            return
+            dir_list = []
+            for file in os.listdir(client_dir):
+                file_path = os.path.join(client_dir, file)
+                if os.path.isfile(file_path):
+                    print(file_path)
+                    self.emailer(mail, file_path)
+                    if not os.path.exists(client_dir + "\\archiwum"):
+                        os.makedirs(client_dir + "\\archiwum")
+                    # move(
+                    #     file_path, client_dir + "\\archiwum\\" + Settings.date_now + file
+                    # )
 
-        dir_path = os.path.join(Settings.DIRECTORY, name)
-        if not os.path.exists(dir_path):
-            return
+                if os.path.isdir(
+                    file_path
+                ):  # search for files in subfolders except archiwum
+                    for dir in os.listdir(file_path):
+                        client_dir = os.path.join(file_path, dir)
 
-        self.process_files_in_directory(mail, dir_path)
+                        if not ("archiwum" or "Archiwum") in client_dir:
+                            dir_list.append(client_dir)
+                    if dir_list:
+                        self.emailer(mail, dir_list)
+                        if not os.path.exists(client_dir + "\\archiwum"):
+                            os.makedirs(client_dir + "\\archiwum")
+                        for entry in dir_list:
+                            file_name = os.path.basename(entry)
+                            # move(entry, client_dir + '\\archiwum\\' +
+                            # Settings.date_now + file_name)
+
         self.report()
-
-    def process_files_in_directory(self, mail, dir_path):
-        files2 = []
-        for file in os.listdir(dir_path):
-            file_path = os.path.join(dir_path, file)
-            if os.path.isfile(file_path):
-                self.process_file(mail, file_path, dir_path)
-            elif os.path.isdir(file_path):
-                self.process_directory(mail, file_path, dir_path, files2)
-
-    def process_file(self, mail, file_path, dir_path):
-        files = [file_path]
-        self.emailer(mail, files)
-        self.move_file_to_archive(file_path, dir_path)
-
-    def process_directory(self, mail, file_path, dir_path, files2):
-        for file in os.listdir(file_path):
-            file2_path = os.path.join(file_path, file)
-            if not ("archiwum" or "Archiwum") in file2_path:
-                files2.append(file2_path)
-
-        if files2:
-            self.emailer(mail, files2)
-            for entry in files2:
-                self.move_file_to_archive(entry, dir_path)
-
-    def move_file_to_archive(self, file_path, dir_path):
-        archive_dir = os.path.join(dir_path, "archiwum")
-        if not os.path.exists(archive_dir):
-            os.makedirs(archive_dir)
-
-        new_file_name = Settings.date_now + os.path.basename(file_path)
-        new_file_path = os.path.join(archive_dir, new_file_name)
-        # move(file_path, new_file_path)
-        print(new_file_path)
 
     def report(self):
         myapp.count_items()
@@ -80,16 +66,39 @@ class InvoicesMailing:
         report_mail = db.select_client_by_id(1)
         self.emailer(report_mail[0][2], "", my_report)
 
-    def emailer(self, recipient, attachment="", body=Settings.body):
-        outlook = win32.Dispatch("outlook.application")
-        mail = outlook.CreateItem(0)
-        mail.BCC = recipient
-        mail.Subject = "HMT FAKTURA"
-        mail.HtmlBody = body
-        for i in range(len(attachment)):
-            mail.Attachments.Add(attachment[i])
-        # mail.send  # Send mails
-        mail.Display(True)
+    # def get_files_dict(self, name, client_dir):
+    #     dict = {}
+    #     items_list = []
+    #     for path in os.listdir(client_dir):
+    #         if ("archiwum" or "Archiwum") not in path:
+    #             file_path = os.path.join(client_dir, path)
+    #             items_list.append(file_path)
+    #     dict[name] = items_list
+
+    #     return dict
+
+    def emailer(self, recipient_mail, attachment="", body=Settings.body):
+        try:
+            outlook = win32.Dispatch("outlook.application")
+            mail = outlook.CreateItem(0)
+            mail.BCC = recipient_mail
+            mail.Subject = "HMT FAKTURA"
+            mail.HtmlBody = body
+            if isinstance(attachment, list):
+                for i in range(len(attachment)):
+                    mail.Attachments.Add(attachment[i])
+            else:
+                mail.Attachments.Add(attachment)
+            # mail.send # Send mails
+            mail.Display(
+                True
+            )  # Display False if you want to send email without seeing outlook window
+            return 0
+        except Exception as e:
+            print(str(e))
+            myapp.show_warning(
+                f"Wystąpił błąd podczas wysyłania wiadomości e-mail: {str(e)}"
+            )
 
 
 class App(tk.Tk):
@@ -190,7 +199,7 @@ class App(tk.Tk):
 
         self.tree.configure(yscrollcommand=scroll.set)
         self.tree.heading(1, text="Kontrahent")
-        self.tree.heading(2, text="Mail")
+        self.tree.heading(2, text="Adres email")
         self.tree.heading(3, text="Pliki")
         self.tree.column(1, width=300)
         self.tree.column(2, width=280)
@@ -216,7 +225,6 @@ class App(tk.Tk):
                     if not ("Thumbs.db") in file and os.path.isfile(
                         os.path.join(path, file)
                     ):
-                        print(os.path.join(path, file))
                         count += 1
                     if not ("archiwum" or "Archiwum") in file and os.path.isdir(
                         os.path.join(path, file)
