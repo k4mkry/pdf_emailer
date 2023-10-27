@@ -7,14 +7,18 @@ from webbrowser import open
 from shutil import move
 from model import Database
 from settings import *
-import csv
 
 db = Database(Settings.DATABASE)
 
 
-class InvoicesMailing:
+class Emailer:
     def __init__(self):
+        self.clients_info = self.get_clients_info()
+        self.send_mail(self.clients_info)
+
+    def get_clients_info(self):
         rows = db.select_clients()
+        clients_list = []
         for row in rows:
             name = (row[1].lower()).strip()
             mail = (row[2].lower()).strip()
@@ -23,82 +27,87 @@ class InvoicesMailing:
             client_dir = os.path.join(Settings.DIRECTORY, name)
             if not os.path.exists(client_dir):
                 continue
+            files, subfiles = self.get_files_and_subfiles(client_dir)
+            client_info = [name, mail, client_dir, files, subfiles]
+            clients_list.append(client_info)
+        return clients_list
 
-            dir_list = []
-            for file in os.listdir(client_dir):
-                file_path = os.path.join(client_dir, file)
-                if os.path.isfile(file_path):
-                    print(file_path)
-                    self.emailer(mail, file_path)
-                    if not os.path.exists(client_dir + "\\archiwum"):
-                        os.makedirs(client_dir + "\\archiwum")
-                    # move(
-                    #     file_path, client_dir + "\\archiwum\\" + Settings.date_now + file
-                    # )
+    def get_files_and_subfiles(self, client_dir):
+        files = []
+        subfiles = []
+        for path in os.listdir(client_dir):
+            if path:
+                if "." in path:
+                    file_path = os.path.join(client_dir, path)
+                    files.append(file_path)
+                else:
+                    if not path.lower() == "archiwum":
+                        subfolder_path = os.path.join(client_dir, path)
+                        for i in os.listdir(subfolder_path):
+                            subfile_path = os.path.join(subfolder_path, i)
+                            subfiles.append(subfile_path)
+        return files, subfiles
 
-                if os.path.isdir(
-                    file_path
-                ):  # search for files in subfolders except archiwum
-                    for dir in os.listdir(file_path):
-                        client_dir = os.path.join(file_path, dir)
+    def move_to_archiwum(self, file):
+        print(file)
+        file_path = os.path.dirname(file)
+        archiwum_path = os.path.join(file_path, "archiwum\\")
+        file_name = os.path.basename(file)
+        if not os.path.exists(archiwum_path):
+            os.makedirs(archiwum_path)
+        print(file)
+        print(archiwum_path + Settings.date_now + file_name)
+        # move(file, archiwum_path + Settings.date_now + file_name)
 
-                        if not ("archiwum" or "Archiwum") in client_dir:
-                            dir_list.append(client_dir)
-                    if dir_list:
-                        self.emailer(mail, dir_list)
-                        if not os.path.exists(client_dir + "\\archiwum"):
-                            os.makedirs(client_dir + "\\archiwum")
-                        for entry in dir_list:
-                            file_name = os.path.basename(entry)
-                            # move(entry, client_dir + '\\archiwum\\' +
-                            # Settings.date_now + file_name)
+    # def report(self):
+    #     myapp.count_items()
+    #     my_report = "Raport z mailingu faktur - jeżeli jakieś pliki pozostaną niewysłane, zostaną wylistowane niżej.<br>"
+    #     report = ""
+    #     for k, v in myapp.items.items():
+    #         if v != 0:
+    #             report += f"{k} - {str(v)} <br>"
+    #     my_report += report
+    #     report_mail = db.select_client_by_id(1)
+    #     self.send_mail(report_mail[0][2], "", my_report)
 
-        self.report()
+    def send_mail(self, clients_info):
+        for client in clients_info:
+            if client[3]:
+                for item in client[3]:
+                    self.prepare_mail(client[1], client[0], item)
+                    self.move_to_archiwum(item)
 
-    def report(self):
-        myapp.count_items()
-        my_report = "Raport z mailingu faktur - jeżeli jakieś pliki pozostaną niewysłane, zostaną wylistowane niżej.<br>"
-        report = ""
-        for k, v in myapp.items.items():
-            if v != 0:
-                report += f"{k} - {str(v)} <br>"
-        my_report += report
-        report_mail = db.select_client_by_id(1)
-        self.emailer(report_mail[0][2], "", my_report)
+            if client[4]:
+                self.prepare_mail(client[1], client[0], client[4])
+                for item in client[4]:
+                    self.move_to_archiwum(item)
 
-    # def get_files_dict(self, name, client_dir):
-    #     dict = {}
-    #     items_list = []
-    #     for path in os.listdir(client_dir):
-    #         if ("archiwum" or "Archiwum") not in path:
-    #             file_path = os.path.join(client_dir, path)
-    #             items_list.append(file_path)
-    #     dict[name] = items_list
-
-    #     return dict
-
-    def emailer(self, recipient_mail, attachment="", body=Settings.body):
-        try:
-            outlook = win32.Dispatch("outlook.application")
-            mail = outlook.CreateItem(0)
-            mail.BCC = recipient_mail
-            mail.Subject = "HMT FAKTURA"
-            mail.HtmlBody = body
-            if isinstance(attachment, list):
-                for i in range(len(attachment)):
-                    mail.Attachments.Add(attachment[i])
-            else:
-                mail.Attachments.Add(attachment)
-            # mail.send # Send mails
-            mail.Display(
-                True
-            )  # Display False if you want to send email without seeing outlook window
-            return 0
-        except Exception as e:
-            print(str(e))
-            myapp.show_warning(
-                f"Wystąpił błąd podczas wysyłania wiadomości e-mail: {str(e)}"
-            )
+    def prepare_mail(
+        self, mail_address, subject="Faktura HMT nr", attach="", body=Settings.body
+    ):
+        outlook = win32.Dispatch("outlook.application")
+        mail = outlook.CreateItem(0)
+        mail.BCC = mail_address
+        mail.Subject = subject
+        mail.HtmlBody = body
+        if type(attach) == list:
+            for i in range(len(attach)):
+                mail.Attachments.Add(attach[i])
+        else:
+            mail.Attachments.Add(attach)
+        # mail.send
+        # Display False if you want to send email without seeing outlook window
+        mail.Display(True)
+        # if attachment:
+        #     if isinstance(attachment, list):
+        #         for i in range(len(attachment)):
+        #             tail = self.path_leaf(attachment[i])
+        #             mail.Attachments.Add(attachment[i])
+        #     else:
+        #         tail = self.path_leaf(attachment)
+        #         mail.Attachments.Add(attachment)
+        # else:
+        #     tail = ""
 
 
 class App(tk.Tk):
@@ -106,7 +115,6 @@ class App(tk.Tk):
         super().__init__()
         self["bg"] = "#f1f3f4"
         self.geometry("650x520")
-        # self.geometry('650x495')
         self.title("Dystrybutor faktur")
         self.resizable(width=False, height=False)
 
@@ -179,7 +187,7 @@ class App(tk.Tk):
         b_open.grid(row=1, column=3, padx=(0, 5))
 
         b_send = ttk.Button(
-            f_control, text="\nWyślij\n", width=13, command=lambda: InvoicesMailing()
+            f_control, text="\nWyślij\n", width=13, command=lambda: Emailer()
         )
         b_send.grid(row=0, column=4, rowspan=2, padx=(10, 5))
         b_test = ttk.Button(
