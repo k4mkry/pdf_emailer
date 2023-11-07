@@ -4,6 +4,8 @@ import tkinter.messagebox as messagebox
 import tkinter.ttk as ttk
 import win32com.client as win32
 import pandas as pd
+from tkinter import filedialog
+from tkcalendar import DateEntry
 from webbrowser import open
 from model import Database
 from emailer import Emailer
@@ -92,14 +94,42 @@ class App(tk.Tk):
             f_control, text="\nWyślij\n", width=13, command=lambda: Emailer()
         )
         b_send.grid(row=0, column=4, rowspan=2, padx=(10, 5))
+
         b_test = ttk.Button(
             f_control, text="Odśwież", width=13, command=self.count_items
         )
         b_test.grid(row=2, column=4, padx=(10, 5))
-        b_report = ttk.Button(
-            f_control, text="Raport", width=13, command=self.get_report
+
+        fromL = ttk.Label(f_control, text="Od: ")
+        fromL.grid(row=3, column=2, sticky="e")
+
+        self.od = tk.StringVar()
+        fromE = DateEntry(
+            f_control,
+            locale="pl_PL",
+            date_pattern="dd.mm.y",
+            width=10,
+            textvariable=self.od,
         )
-        b_report.grid(row=3, column=4, padx=(10, 5))
+        fromE.grid(row=3, column=3)
+
+        toL = ttk.Label(f_control, text="Do: ")
+        toL.grid(row=4, column=2, sticky="e")
+
+        self.do = tk.StringVar()
+        toE = DateEntry(
+            f_control,
+            locale="pl_PL",
+            date_pattern="dd.mm.y",
+            width=10,
+            textvariable=self.do,
+        )
+        toE.grid(row=4, column=3)
+
+        b_report = ttk.Button(
+            f_control, text="Generuj\nRaport", width=13, command=self.report
+        )
+        b_report.grid(row=3, rowspan=2, column=4, padx=(10, 5))
 
         # tree
         self.tree = ttk.Treeview(
@@ -123,20 +153,19 @@ class App(tk.Tk):
         # functions
         self.count_items()
 
-    def get_reportt(self):
-        input = filedialog.asksaveasfilename(defaultextension=".xlsx")
-        # db.select_pack_report(self.od.get(), self.do.get(), input)
-
-        df1 = pd.read_sql_query("SELECT * FROM pak_reports", db.conn)
-        # df2 = pd.read_sql('select * from counter_reports', conn)
-        # writer = pd.ExcelWriter(input.name)
-        with pd.ExcelWriter(input) as writer:
-            df1.to_excel(writer, sheet_name="Pakowanie", index=False)
-            # df2.to_excel(writer, sheet_name='Kody_pracy', index=False)
-            writer.save()
-
-    def get_report(self):
-        print(db.get_report())
+    def report(self):
+        df1 = pd.DataFrame(db.get_report(self.od.get(), self.do.get()))
+        if not df1.empty:
+            df1.columns = ["nr", "nr_faktury", "data", "kontrahent"]
+            input = filedialog.asksaveasfilename(defaultextension=".xlsx")
+            if input:
+                print(input)
+                writer = pd.ExcelWriter(input)
+                df1.to_excel(writer, sheet_name="Raport", index=False)
+                writer.close()
+                os.system(f'start excel.exe "{input}"')
+        else:
+            self.show_warning("Nie znaleziono danych w zadanym przedziale czasu.")
 
     def count_items(self):
         rows = db.select_clients()

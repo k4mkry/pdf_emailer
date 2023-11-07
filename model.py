@@ -40,12 +40,14 @@ class Database:
         )
         self.conn.commit()
 
-    def get_report(self):
+    def get_report(self, od, do):
         self.cur.execute(
             """
             SELECT * FROM reports
-            ORDER BY data ASC
-            """
+            WHERE data between ? and ?
+            ORDER BY data ASC 
+            """,
+            (od, do),
         )
         return self.cur.fetchall()
 

@@ -24,11 +24,12 @@ class Style(ttk.Style):
 class Settings:
     # Settings for development
     DIRECTORY = os.path.join(os.getcwd(), "WDT_path")
-    # DATABASE = os.path.join(os.getcwd(), 'emailer.db')
+    DATABASE = os.path.join(os.getcwd(), "emailer.db")
     # Settings for production
     # DIRECTORY = "\\\\10.16.1.100\\Sroda\\Ksiegowosc\\Faktury do wysylki"
-    DATABASE = "\\\\10.16.1.103\\wysylka_faktur\\emailer.db"
-    date_now = datetime.now().strftime("%Y_%m_%d")
+    # DATABASE = "\\\\10.16.1.103\\wysylka_faktur\\emailer.db"
+    date_now = datetime.now().strftime("%d.%m.%Y")
+    date_now_formated = datetime.now().strftime("%Y_%m_%d")
     body = """
     <p>
     <span style="font-size:8px">[de] </span>

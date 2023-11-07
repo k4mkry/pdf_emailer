@@ -47,7 +47,7 @@ class Emailer:
     def move_to_archiwum(self, file):
         file_path = os.path.dirname(file)
         file_name = os.path.basename(file)
-        new_file_name = Settings.date_now + file_name
+        new_file_name = Settings.date_now_formated + file_name
         archiwum_path = self.create_archiwum_path(file_path)
         if os.path.isfile(file):
             move(file, archiwum_path + "\\" + new_file_name)
@@ -63,7 +63,7 @@ class Emailer:
             if client[3]:
                 for item in client[3]:
                     self.prepare_mail(client[1], client[0], item)
-                    # self.move_to_archiwum(item)
+                    self.move_to_archiwum(item)
 
             if client[4]:
                 self.prepare_mail(client[1], client[0], client[4])
@@ -82,17 +82,20 @@ class Emailer:
                 if os.path.isdir(attach[i]):
                     continue
                 mail.Attachments.Add(attach[i])
-                file_name_list.append(self.file_name_from_path(attach[i]))
+                file_name = self.file_name_from_path(attach[i])
+                file_name_list.append(file_name)
+                db.add_report(file_name, Settings.date_now, client_name)
         else:
             mail.Attachments.Add(attach)
-            file_name_list.append(self.file_name_from_path(attach))
+            file_name = self.file_name_from_path(attach)
+            file_name_list.append(file_name)
+            db.add_report(file_name, Settings.date_now, client_name)
         file_names = ", ".join(file_name_list)
 
         subject = f"Faktura HMT nr: {file_names}"
         if "porsche" in mail_address.lower():
             subject = f"Faktura HMT nr: {file_names}, numer klienta: 641990"
         mail.Subject = subject
-        db.add_report(file_names, Settings.date_now, client_name)
         # mail.send
         # Display False if you want to send email without seeing outlook window
         mail.Display(True)
