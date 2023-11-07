@@ -28,7 +28,7 @@ class Settings:
     # Settings for production
     # DIRECTORY = "\\\\10.16.1.100\\Sroda\\Ksiegowosc\\Faktury do wysylki"
     DATABASE = "\\\\10.16.1.103\\wysylka_faktur\\emailer.db"
-    date_now = datetime.now().strftime("%Y_%m_%d") + "-"
+    date_now = datetime.now().strftime("%Y_%m_%d")
     body = """
     <p>
     <span style="font-size:8px">[de] </span>

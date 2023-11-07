@@ -3,111 +3,13 @@ import tkinter as tk
 import tkinter.messagebox as messagebox
 import tkinter.ttk as ttk
 import win32com.client as win32
+import pandas as pd
 from webbrowser import open
-from shutil import move
 from model import Database
+from emailer import Emailer
 from settings import *
 
 db = Database(Settings.DATABASE)
-
-
-class Emailer:
-    def __init__(self):
-        self.clients_info = self.get_clients_info()
-        self.send_mail(self.clients_info)
-
-    def get_clients_info(self):
-        rows = db.select_clients()
-        clients_list = []
-        for row in rows:
-            name = (row[1].lower()).strip()
-            mail = (row[2].lower()).strip()
-            if name == "poczta":
-                continue
-            client_dir = os.path.join(Settings.DIRECTORY, name)
-            if not os.path.exists(client_dir):
-                continue
-            files, subfiles = self.get_files_and_subfiles(client_dir)
-            client_info = [name, mail, client_dir, files, subfiles]
-            clients_list.append(client_info)
-        return clients_list
-
-    def get_files_and_subfiles(self, client_dir):
-        files = []
-        subfiles = []
-        for path in os.listdir(client_dir):
-            if path:
-                if "." in path:
-                    file_path = os.path.join(client_dir, path)
-                    files.append(file_path)
-                else:
-                    if not path.lower() == "archiwum":
-                        subfolder_path = os.path.join(client_dir, path)
-                        for i in os.listdir(subfolder_path):
-                            subfile_path = os.path.join(subfolder_path, i)
-                            subfiles.append(subfile_path)
-        return files, subfiles
-
-    def move_to_archiwum(self, file):
-        print(file)
-        file_path = os.path.dirname(file)
-        archiwum_path = os.path.join(file_path, "archiwum\\")
-        file_name = os.path.basename(file)
-        if not os.path.exists(archiwum_path):
-            os.makedirs(archiwum_path)
-        print(file)
-        print(archiwum_path + Settings.date_now + file_name)
-        # move(file, archiwum_path + Settings.date_now + file_name)
-
-    # def report(self):
-    #     myapp.count_items()
-    #     my_report = "Raport z mailingu faktur - jeżeli jakieś pliki pozostaną niewysłane, zostaną wylistowane niżej.<br>"
-    #     report = ""
-    #     for k, v in myapp.items.items():
-    #         if v != 0:
-    #             report += f"{k} - {str(v)} <br>"
-    #     my_report += report
-    #     report_mail = db.select_client_by_id(1)
-    #     self.send_mail(report_mail[0][2], "", my_report)
-
-    def send_mail(self, clients_info):
-        for client in clients_info:
-            if client[3]:
-                for item in client[3]:
-                    self.prepare_mail(client[1], client[0], item)
-                    self.move_to_archiwum(item)
-
-            if client[4]:
-                self.prepare_mail(client[1], client[0], client[4])
-                for item in client[4]:
-                    self.move_to_archiwum(item)
-
-    def prepare_mail(
-        self, mail_address, subject="Faktura HMT nr", attach="", body=Settings.body
-    ):
-        outlook = win32.Dispatch("outlook.application")
-        mail = outlook.CreateItem(0)
-        mail.BCC = mail_address
-        mail.Subject = subject
-        mail.HtmlBody = body
-        if type(attach) == list:
-            for i in range(len(attach)):
-                mail.Attachments.Add(attach[i])
-        else:
-            mail.Attachments.Add(attach)
-        # mail.send
-        # Display False if you want to send email without seeing outlook window
-        mail.Display(True)
-        # if attachment:
-        #     if isinstance(attachment, list):
-        #         for i in range(len(attachment)):
-        #             tail = self.path_leaf(attachment[i])
-        #             mail.Attachments.Add(attachment[i])
-        #     else:
-        #         tail = self.path_leaf(attachment)
-        #         mail.Attachments.Add(attachment)
-        # else:
-        #     tail = ""
 
 
 class App(tk.Tk):
@@ -194,6 +96,10 @@ class App(tk.Tk):
             f_control, text="Odśwież", width=13, command=self.count_items
         )
         b_test.grid(row=2, column=4, padx=(10, 5))
+        b_report = ttk.Button(
+            f_control, text="Raport", width=13, command=self.get_report
+        )
+        b_report.grid(row=3, column=4, padx=(10, 5))
 
         # tree
         self.tree = ttk.Treeview(
@@ -216,6 +122,21 @@ class App(tk.Tk):
 
         # functions
         self.count_items()
+
+    def get_reportt(self):
+        input = filedialog.asksaveasfilename(defaultextension=".xlsx")
+        # db.select_pack_report(self.od.get(), self.do.get(), input)
+
+        df1 = pd.read_sql_query("SELECT * FROM pak_reports", db.conn)
+        # df2 = pd.read_sql('select * from counter_reports', conn)
+        # writer = pd.ExcelWriter(input.name)
+        with pd.ExcelWriter(input) as writer:
+            df1.to_excel(writer, sheet_name="Pakowanie", index=False)
+            # df2.to_excel(writer, sheet_name='Kody_pracy', index=False)
+            writer.save()
+
+    def get_report(self):
+        print(db.get_report())
 
     def count_items(self):
         rows = db.select_clients()
